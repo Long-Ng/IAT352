@@ -54,7 +54,7 @@ for ($i = 0; $i < 7; $i++) {
 $columnVars = [$col0 = "default", $col1 = "default", $col2 = "default", $col3 = "default", $col4 = "default", $col5 = "default", $col6 = "default"];
 
 for ($j = 0; $j < count($selectedColumns); $j++) {
-    //replace values of variables with values of checkboxes
+    //replace default values of variables with values of checkboxes
     $columnVars[$j] = $_POST[$selectedColumns[$j]];
 }
 
@@ -68,15 +68,15 @@ for ($j = 0; $j < count($selectedColumns); $j++) {
     <body>
         <h1>Query</h1>
         <form action="dbquery.php" method="POST">
-            <h2>select order parameters</h2>
+            <h2>Select order parameters</h2>
             <p>Note: If Order Number and Order Date are both selected, SQL query will prioritize Order Number</p>
-            <label for="order_num">Order number:</label>
+            <label for="order_num">Order Number:</label>
             <select name="order_num" id="order_num">
                 <option value=""></option>
                 <?php
                 if (mysqli_num_rows($order_nums_result) != 0) {
                     while ($row = mysqli_fetch_assoc($order_nums_result)) {
-                        echo add_dropdown_option($row['orderNumber']);
+                        // echo add_dropdown_option($row['orderNumber']);
                         $selected = ($_POST['order_num'] == $row['orderNumber']) ? 'selected' : '';
                         echo "<option value='{$row['orderNumber']}' $selected>{$row['orderNumber']}</option>";
                     }
@@ -89,20 +89,19 @@ for ($j = 0; $j < count($selectedColumns); $j++) {
             <label>Order Date (YYYY-MM-DD)</label>
             <br>
             <?php
-            makeDateEntry("start_date","from:","start_date");
-            makeDateEntry("end_date","to:","end_date");
+            makeDateEntry("start_date","from","start_date");
+            makeDateEntry("end_date","to","end_date");
             ?>
-
 
             <h2>Select columns to display</h2>
             <?php 
-            makeCheckbox("Order Number","Order Number", "checkbox0", "orderNumber");
-            makeCheckbox("Order Date","Order Date", "checkbox1", "orderDate");
-            makeCheckbox("Shipped Date","Shipped Date", "checkbox2", "shippedDate");
-            makeCheckbox("Product Name","Product Name", "checkbox3", "productName");
-            makeCheckbox("Product Description","Product Description", "checkbox4", "productDescription");
-            makeCheckbox("Quantity Ordered","Quantity Ordered", "checkbox5", "quantityOrdered");
-            makeCheckbox("Price Each","Price Each", "checkbox6", "priceEach");
+            makeCheckbox("Order Number", "checkbox0", "orderNumber");
+            makeCheckbox("Order Date", "checkbox1", "orderDate");
+            makeCheckbox("Shipped Date", "checkbox2", "shippedDate");
+            makeCheckbox("Product Name", "checkbox3", "productName");
+            makeCheckbox("Product Description", "checkbox4", "productDescription");
+            makeCheckbox("Quantity Ordered", "checkbox5", "quantityOrdered");
+            makeCheckbox("Price Each", "checkbox6", "priceEach");
             ?>           
             <br>
             <br>
@@ -110,14 +109,19 @@ for ($j = 0; $j < count($selectedColumns); $j++) {
         </form>
 
         <h3>SQL Query:</h3>
-
+        
         <?php
         if (!empty($_POST['order_num'])) {
-            $order_num_query_str =  str_replace("?",$_POST['order_num'],$query_by_number);
+            //show text of the query for order number param option
+            $order_num_query_str =  str_replace("?", $_POST['order_num'], $query_by_number);
             echo $order_num_query_str;
+
+            //bind and execute the query stmt
             $order_num = $_POST['order_num'];
             mysqli_stmt_bind_param($stmt_number, 'i', $order_num);
             mysqli_stmt_execute($stmt_number);
+
+            //save query result
             $result = mysqli_stmt_get_result($stmt_number);
         }
         else if (isset($_POST['start_date']) && isset($_POST['end_date'])) {
@@ -127,15 +131,19 @@ for ($j = 0; $j < count($selectedColumns); $j++) {
                     echo "End date should come before start date";
                     exit;
                 }
-            else{
-                    $firstpos = strpos($query_by_date, "?");
-                    $order_date_query_str = substr_replace($query_by_date, $_POST['start_date'], strpos($query_by_date, "?"), strlen("?"));
-                    $order_date_query_str = substr_replace($order_date_query_str, $_POST['end_date'], strpos($order_date_query_str, "?"), strlen("?"));
+                else{
+                    //show text of query for order date param option
+                    $order_date_query_str = substr_replace($query_by_date, $_POST['start_date'], strpos($query_by_date, "?"), strlen("?")); //replaces first ? in query text
+                    $order_date_query_str = substr_replace($order_date_query_str, $_POST['end_date'], strpos($order_date_query_str, "?"), strlen("?")); //replaces second ? in query text
                     echo $order_date_query_str;
+
+                    //bind and execute the query stmt
                     $start_date = $_POST['start_date'];
                     $end_date = $_POST['end_date'];
                     mysqli_stmt_bind_param($stmt_date, "ss", $start_date, $end_date);
                     mysqli_stmt_execute($stmt_date);
+
+                    //save query result
                     $result = mysqli_stmt_get_result($stmt_date);
                 }
             }
@@ -144,13 +152,6 @@ for ($j = 0; $j < count($selectedColumns); $j++) {
             echo "please enter something in the form";
             exit;
         }
-        // echo $_POST['checkbox1'];
-        // $col1 = $_POST['checkbox1'];
-        // echo "SELECT $col1
-        // FROM orders
-        // INNER JOIN orderdetails ON orders.orderNumber = orderdetails.orderNumber
-        // INNER JOIN products ON orderdetails.productCode = products.productCode
-        // WHERE orders.orderNumber = ?";
         ?>
         
         <h3>Result</h3>
@@ -161,9 +162,7 @@ for ($j = 0; $j < count($selectedColumns); $j++) {
                     if (mysqli_num_rows($result) != 0) {
                         foreach ($columnVars as $col) {
                             if ($col != "default") {
-                                echo "<th>";
-                                echo $col;
-                                echo "</th>";
+                                echo "<th>" .$col. "</th>";
                             }
                         }
                     }

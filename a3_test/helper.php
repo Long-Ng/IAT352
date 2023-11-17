@@ -3,13 +3,13 @@ function add_dropdown_option($optionValue) {
     echo "<option value=\"$optionValue\">$optionValue</option>";
 }
 
-function makeCheckbox($label, $text, $varname, $opt="") {
-    echo "<input type=\"checkbox\" name=\"$varname\" value=\"$opt\" ";
+function makeCheckbox($text, $varname, $opt="") {
+    echo "<input type=\"checkbox\" name=\"$varname\" id=\"$varname\" value=\"$opt\" ";
     if (isset($_POST[$varname])) {
         echo "checked";
     }
     echo "/>";
-    echo "<label for ='$label'>$text</label><br>";
+    echo "<label for=\"$varname\">$text</label><br>";
 
 }
 
