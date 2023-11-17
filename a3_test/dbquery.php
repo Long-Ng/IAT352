@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <?php
-require("helper.php");
-require("db.php");
+require_once("helper.php");
+require_once("db.php");
 
 //prepared statements for the 2 order params
 $query_by_number = "SELECT orders.orderNumber, orders.orderDate, orders.shippedDate, products.productName, products.productDescription, orderdetails.quantityOrdered, orderdetails.priceEach
@@ -69,6 +69,7 @@ for ($j = 0; $j < count($selectedColumns); $j++) {
         <h1>Query</h1>
         <form action="dbquery.php" method="POST">
             <h2>select order parameters</h2>
+            <p>Note: If Order Number and Order Date are both selected, SQL query will prioritize Order Number</p>
             <label for="order_num">Order number:</label>
             <select name="order_num" id="order_num">
                 <option value=""></option>
@@ -76,6 +77,8 @@ for ($j = 0; $j < count($selectedColumns); $j++) {
                 if (mysqli_num_rows($order_nums_result) != 0) {
                     while ($row = mysqli_fetch_assoc($order_nums_result)) {
                         echo add_dropdown_option($row['orderNumber']);
+                        $selected = ($_POST['order_num'] == $row['orderNumber']) ? 'selected' : '';
+                        echo "<option value='{$row['orderNumber']}' $selected>{$row['orderNumber']}</option>";
                     }
                 }
                 ?>
@@ -85,34 +88,22 @@ for ($j = 0; $j < count($selectedColumns); $j++) {
 
             <label>Order Date (YYYY-MM-DD)</label>
             <br>
-            <label for="start_date">from:</label>
-            <input type="date" id="start_date" name="start_date"/>
-            <label for="end_date">to:</label>
-            <input type="date" id="end_date" name="end_date"/>
+            <?php
+            makeDateEntry("start_date","from:","start_date");
+            makeDateEntry("end_date","to:","end_date");
+            ?>
+
 
             <h2>Select columns to display</h2>
-            
-            <input type="checkbox" name="checkbox0" id="order_number" value="orderNumber"/>
-            <label for="order_number">Order number</label>
-
-            <input type="checkbox" name="checkbox1" id="order_date" value="orderDate"/>
-            <label for="order_date">Order date</label>
-
-            <input type="checkbox" name="checkbox2" id="shipped_date" value="shippedDate"/>
-            <label for="shipped_date">Shipped date</label>
-
-            <input type="checkbox" name="checkbox3" id="prod_name" value="productName"/>
-            <label for="prod_name">Product name</label>
-
-            <input type="checkbox" name="checkbox4" id="prod_desc" value="productDescription"/>
-            <label for="prod_desc">Product description</label>
-
-            <input type="checkbox" name="checkbox5" id="qty_ordered" value="quantityOrdered"/>
-            <label for="qty_ordered">Quantity ordered</label>
-
-            <input type="checkbox" name="checkbox6" id="price_each" value="priceEach"/>
-            <label for="price_each">Price each</label>
-            
+            <?php 
+            makeCheckbox("Order Number","Order Number", "checkbox0", "orderNumber");
+            makeCheckbox("Order Date","Order Date", "checkbox1", "orderDate");
+            makeCheckbox("Shipped Date","Shipped Date", "checkbox2", "shippedDate");
+            makeCheckbox("Product Name","Product Name", "checkbox3", "productName");
+            makeCheckbox("Product Description","Product Description", "checkbox4", "productDescription");
+            makeCheckbox("Quantity Ordered","Quantity Ordered", "checkbox5", "quantityOrdered");
+            makeCheckbox("Price Each","Price Each", "checkbox6", "priceEach");
+            ?>           
             <br>
             <br>
             <input type="submit" name="submit"/>
@@ -122,7 +113,8 @@ for ($j = 0; $j < count($selectedColumns); $j++) {
 
         <?php
         if (!empty($_POST['order_num'])) {
-            echo $query_by_number;
+            $order_num_query_str =  str_replace("?",$_POST['order_num'],$query_by_number);
+            echo $order_num_query_str;
             $order_num = $_POST['order_num'];
             mysqli_stmt_bind_param($stmt_number, 'i', $order_num);
             mysqli_stmt_execute($stmt_number);
@@ -130,13 +122,27 @@ for ($j = 0; $j < count($selectedColumns); $j++) {
         }
         else if (isset($_POST['start_date']) && isset($_POST['end_date'])) {
             if (!empty($_POST['start_date']) && !empty($_POST['end_date'])) {
-                echo $query_by_date;
-                $start_date = $_POST['start_date'];
-                $end_date = $_POST['end_date'];
-                mysqli_stmt_bind_param($stmt_date, "ss", $start_date, $end_date);
-                mysqli_stmt_execute($stmt_date);
-                $result = mysqli_stmt_get_result($stmt_date);
+                if(strtotime($_POST['end_date']) < strtotime($_POST['start_date']))
+                {
+                    echo "End date should come before start date";
+                    exit;
+                }
+            else{
+                    $firstpos = strpos($query_by_date, "?");
+                    $order_date_query_str = substr_replace($query_by_date, $_POST['start_date'], strpos($query_by_date, "?"), strlen("?"));
+                    $order_date_query_str = substr_replace($order_date_query_str, $_POST['end_date'], strpos($order_date_query_str, "?"), strlen("?"));
+                    echo $order_date_query_str;
+                    $start_date = $_POST['start_date'];
+                    $end_date = $_POST['end_date'];
+                    mysqli_stmt_bind_param($stmt_date, "ss", $start_date, $end_date);
+                    mysqli_stmt_execute($stmt_date);
+                    $result = mysqli_stmt_get_result($stmt_date);
+                }
             }
+        }
+        else{
+            echo "please enter something in the form";
+            exit;
         }
         // echo $_POST['checkbox1'];
         // $col1 = $_POST['checkbox1'];
@@ -151,12 +157,14 @@ for ($j = 0; $j < count($selectedColumns); $j++) {
         <table>
             <tr>
                 <?php
-                if (mysqli_num_rows($result) != 0) {
-                    foreach ($columnVars as $col) {
-                        if ($col != "default") {
-                            echo "<th>";
-                            echo $col;
-                            echo "</th>";
+                if(!empty($result)){
+                    if (mysqli_num_rows($result) != 0) {
+                        foreach ($columnVars as $col) {
+                            if ($col != "default") {
+                                echo "<th>";
+                                echo $col;
+                                echo "</th>";
+                            }
                         }
                     }
                 }
@@ -164,22 +172,26 @@ for ($j = 0; $j < count($selectedColumns); $j++) {
             </tr>
             
             <?php
-            if (mysqli_num_rows($result) != 0) {
-                while ($row = mysqli_fetch_assoc($result)) {
-                    echo "<tr>";
-                    foreach ($columnVars as $col) {
-                        if ($col != "default") {
-                            echo "<td>" .$row[$col]. "</td>";
+            if(!empty($result)){
+                if (mysqli_num_rows($result) != 0) {
+                    while ($row = mysqli_fetch_assoc($result)) {
+                        echo "<tr>";
+                        foreach ($columnVars as $col) {
+                            if ($col != "default") {
+                                echo "<td>" .$row[$col]. "</td>";
+                            }
                         }
+                        echo "</tr>";
                     }
-                    echo "</tr>";
                 }
             }
             ?>
         </table>
 
         <?php
-        mysqli_free_result($result);
+        if(!empty($result)){
+            mysqli_free_result($result);
+        }
         ?>
 
     </body>
