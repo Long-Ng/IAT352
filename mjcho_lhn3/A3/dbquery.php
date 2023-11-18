@@ -200,6 +200,9 @@ for ($j = 0; $j < count($selectedColumns); $j++) {
         if(!empty($result)){
             mysqli_free_result($result);
         }
+        else{
+            echo "please enter something in the form";
+        }
         ?>
 
     </body>
